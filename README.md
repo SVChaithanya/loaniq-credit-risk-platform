@@ -109,7 +109,7 @@ backend/
 ## ⚙️ Setup Instructions
 
 ### 1. Clone Repository
-```bash
+
 git clone https://github.com/your-username/loaniq-credit-risk-platform.git
 cd loaniq-credit-risk-platform
 2. Run with Docker
