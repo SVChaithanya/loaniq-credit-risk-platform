@@ -121,20 +121,20 @@ docker compose up --build -d
 Frontend: http://localhost:8000/
 API Docs: http://localhost:8000/docs
 ## 🔗 API Endpoints
-###Auth
+**Auth**
 -POST /auth/register → Register user + send OTP
 -POST /auth/verify → Verify OTP
 -POST /auth/login → Login user
 -POST /auth/refresh → Refresh token
-###Profile
+**Profile**
 -POST /profile/ → Create profile
 -GET /profile/ → Get profile
-###Loan
+**Loan**
 -POST /loan/ → Risk prediction
 -GET /loan/history → Loan history
 ##📊 ML Model Output
 
-###The system returns:
+### **The system returns:**
 
 -Loan Decision: Accept / Review / Reject
 -Interest Rate (%)
@@ -142,20 +142,20 @@ API Docs: http://localhost:8000/docs
 -Debt-to-Income Ratio (DTI)
 -Risk Probability Score
 -Alternative Bank Suggestions
-## 🚀 Deployment
+## **🚀 Deployment**
 
 ###Deployed on AWS EC2 using Docker:
 
 -Ubuntu 24.04 LTS
 -Docker + Docker Compose
 -Nginx-ready structure (optional upgrade)
-## 🧠 Key Highlights
+## **🧠 Key Highlights**
 -End-to-end credit risk system
 -Real-world banking logic simulation
 -Production-style authentication system
 -ML + backend integration (not just notebook project)
 -Scalable microservice-ready architecture
-##  📌 Future Improvements
+##  **📌 Future Improvements**
 -React frontend upgrade
 -Redis caching for OTP
 -Microservices split (Auth / ML / Loan engine)
