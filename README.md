@@ -111,12 +111,16 @@ backend/
 
 git clone https://github.com/your-username/loaniq-credit-risk-platform.git
 cd loaniq-credit-risk-platform
-###2. Run with Docker
+
+
+2. Run with Docker
 docker compose up --build -d
-###3. Access Application
+
+
+3. Access Application
 Frontend: http://localhost:8000/
 API Docs: http://localhost:8000/docs
-🔗 API Endpoints
+## 🔗 API Endpoints
 ###Auth
 POST /auth/register → Register user + send OTP
 POST /auth/verify → Verify OTP
@@ -128,7 +132,7 @@ GET /profile/ → Get profile
 ###Loan
 POST /loan/ → Risk prediction
 GET /loan/history → Loan history
-###📊 ML Model Output
+##📊 ML Model Output
 
 ###The system returns:
 
