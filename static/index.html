@@ -1,0 +1,960 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LoanIQ — Credit Risk Engine</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:        #060810;
+    --surface:   #0d1117;
+    --surface2:  #131a24;
+    --border:    #1e2d3d;
+    --accent:    #00d4aa;
+    --accent2:   #0066ff;
+    --warn:      #ff6b35;
+    --text:      #e8edf2;
+    --muted:     #5a7080;
+    --green:     #00d4aa;
+    --red:       #ff4444;
+    --yellow:    #ffb700;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(0,212,170,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,212,170,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none; z-index: 0;
+  }
+
+  nav {
+    position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 40px;
+    background: rgba(6,8,16,0.85);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--border);
+  }
+  .logo { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; color: var(--text); }
+  .logo span { color: var(--accent); }
+  .nav-actions { display: flex; gap: 12px; align-items: center; }
+  .nav-cid {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px; color: var(--muted);
+    background: var(--surface2); padding: 6px 12px;
+    border: 1px solid var(--border); border-radius: 6px;
+  }
+  .btn-logout {
+    font-family: 'Syne', sans-serif;
+    font-size: 13px; font-weight: 600;
+    padding: 8px 18px; border-radius: 6px;
+    background: transparent; color: var(--warn);
+    border: 1px solid var(--warn); cursor: pointer;
+    transition: all .2s;
+  }
+  .btn-logout:hover { background: var(--warn); color: #fff; }
+
+  .page { display: none; position: relative; z-index: 1; }
+  .page.active { display: flex; }
+
+  #page-auth {
+    min-height: 100vh;
+    align-items: center; justify-content: center;
+    padding: 80px 20px 40px;
+  }
+  .auth-card {
+    width: 100%; max-width: 440px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px; padding: 44px 40px;
+    position: relative;
+    box-shadow: 0 0 60px rgba(0,212,170,0.05);
+  }
+  .auth-card::before {
+    content: '';
+    position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+    width: 60%; height: 1px;
+    background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  }
+  .card-title { font-size: 26px; font-weight: 800; margin-bottom: 6px; }
+  .card-sub { font-size: 14px; color: var(--muted); margin-bottom: 32px; }
+
+  .tabs {
+    display: flex; gap: 0; margin-bottom: 32px;
+    background: var(--surface2); border-radius: 8px; padding: 4px;
+  }
+  .tab {
+    flex: 1; padding: 10px; text-align: center;
+    font-family: 'Syne', sans-serif;
+    font-size: 14px; font-weight: 600;
+    border: none; background: transparent; color: var(--muted);
+    border-radius: 6px; cursor: pointer; transition: all .2s;
+  }
+  .tab.active { background: var(--accent); color: var(--bg); }
+
+  .form-group { margin-bottom: 18px; }
+  label {
+    display: block; font-size: 12px; font-weight: 600;
+    color: var(--muted); margin-bottom: 7px; letter-spacing: 0.5px;
+    text-transform: uppercase;
+  }
+  input, select {
+    width: 100%; padding: 12px 14px;
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text);
+    font-family: 'JetBrains Mono', monospace; font-size: 14px;
+    transition: border-color .2s;
+    outline: none; -webkit-appearance: none;
+  }
+  input:focus, select:focus { border-color: var(--accent); }
+  select option { background: var(--surface2); }
+
+  .otp-row { display: flex; gap: 8px; }
+  .otp-row input { width: 46px; height: 56px; text-align: center; font-size: 20px; font-weight: 700; padding: 0; }
+
+  .btn {
+    width: 100%; padding: 14px;
+    font-family: 'Syne', sans-serif;
+    font-size: 15px; font-weight: 700;
+    border: none; border-radius: 8px;
+    cursor: pointer; transition: all .2s;
+    letter-spacing: 0.3px;
+  }
+  .btn-primary { background: var(--accent); color: var(--bg); }
+  .btn-primary:hover { background: #00f0c0; transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+  .btn-secondary { background: transparent; color: var(--accent); border: 1px solid var(--accent); }
+  .btn-secondary:hover { background: rgba(0,212,170,0.08); }
+
+  .link-row { text-align: center; margin-top: 20px; font-size: 13px; color: var(--muted); }
+  .link-row a { color: var(--accent); cursor: pointer; text-decoration: none; font-weight: 600; }
+  .link-row a:hover { text-decoration: underline; }
+
+  .msg {
+    padding: 12px 14px; border-radius: 8px;
+    font-size: 13px; margin-bottom: 16px;
+    font-family: 'JetBrains Mono', monospace;
+    display: none;
+  }
+  .msg.error   { background: rgba(255,68,68,0.12);  border: 1px solid rgba(255,68,68,0.3);  color: #ff8888; display: block; }
+  .msg.success { background: rgba(0,212,170,0.12);  border: 1px solid rgba(0,212,170,0.3);  color: var(--accent); display: block; }
+  .msg.info    { background: rgba(0,102,255,0.12);  border: 1px solid rgba(0,102,255,0.3);  color: #66aaff; display: block; }
+
+  #page-app { flex-direction: column; min-height: 100vh; padding: 80px 0 40px; }
+  .app-inner { max-width: 1100px; margin: 0 auto; padding: 40px 24px 0; width: 100%; }
+
+  .app-nav {
+    display: flex; gap: 4px; margin-bottom: 36px;
+    border-bottom: 1px solid var(--border); padding-bottom: 0;
+  }
+  .app-tab {
+    padding: 12px 20px;
+    font-family: 'Syne', sans-serif;
+    font-size: 14px; font-weight: 600;
+    border: none; background: transparent; color: var(--muted);
+    cursor: pointer; position: relative;
+    border-bottom: 2px solid transparent;
+    transition: all .2s; margin-bottom: -1px;
+  }
+  .app-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .app-tab:hover:not(.active) { color: var(--text); }
+
+  .section { display: none; }
+  .section.active { display: block; }
+
+  .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+  .profile-grid .full { grid-column: 1/-1; }
+
+  .loan-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; margin-bottom: 24px; }
+
+  /* ── RESULT CARD ── */
+  .result-card {
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 28px; margin-top: 24px;
+  }
+  .decision-badge {
+    display: inline-flex; align-items: center; gap: 8px;
+    padding: 10px 22px; border-radius: 6px;
+    font-size: 16px; font-weight: 800;
+    letter-spacing: 1px; text-transform: uppercase; margin-bottom: 24px;
+  }
+  .decision-badge.accept { background: rgba(0,212,170,0.15); color: var(--green); border: 1px solid rgba(0,212,170,0.4); }
+  .decision-badge.reject { background: rgba(255,68,68,0.15);  color: var(--red);   border: 1px solid rgba(255,68,68,0.4); }
+  .decision-badge.review { background: rgba(255,183,0,0.15);  color: var(--yellow);border: 1px solid rgba(255,183,0,0.4); }
+
+  .metrics-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .metric {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px;
+  }
+  .metric-label { font-size: 11px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; }
+  .metric-value { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 500; color: var(--text); }
+  .metric-value.accent { color: var(--accent); }
+  .metric-value.warn   { color: var(--yellow); }
+  .metric-value.bad    { color: var(--red); }
+
+  /* confidence pill */
+  .confidence-pill {
+    display: inline-block; padding: 3px 10px; border-radius: 4px;
+    font-size: 11px; font-weight: 700; text-transform: uppercase;
+    margin-left: 10px; vertical-align: middle;
+  }
+  .confidence-pill.high   { background: rgba(0,212,170,0.15); color: var(--green); }
+  .confidence-pill.medium { background: rgba(255,183,0,0.15);  color: var(--yellow); }
+  .confidence-pill.low    { background: rgba(255,68,68,0.15);  color: var(--red); }
+
+  /* insights / suggestions */
+  .feedback-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-top: 20px; }
+  .feedback-box {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px;
+  }
+  .feedback-title { font-size: 11px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; }
+  .feedback-item {
+    display: flex; align-items: flex-start; gap: 8px;
+    font-size: 13px; color: var(--text); margin-bottom: 8px;
+    font-family: 'JetBrains Mono', monospace;
+    line-height: 1.5;
+  }
+  .feedback-item:last-child { margin-bottom: 0; }
+  .feedback-dot {
+    width: 6px; height: 6px; border-radius: 50%; margin-top: 5px; flex-shrink: 0;
+  }
+  .dot-info    { background: var(--accent); }
+  .dot-suggest { background: var(--yellow); }
+
+  /* alternatives */
+  .alt-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 20px; }
+  .alt-card {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px;
+  }
+  .alt-bank  { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0.5px; }
+  .alt-row   { display: flex; justify-content: space-between; font-size: 12px; color: var(--muted); margin-bottom: 4px; }
+  .alt-value { font-family: 'JetBrains Mono', monospace; color: var(--text); }
+
+  /* next step bar */
+  .next-step-bar {
+    margin-top: 20px; padding: 14px 18px;
+    background: rgba(0,102,255,0.08); border: 1px solid rgba(0,102,255,0.25);
+    border-radius: 8px; display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: 12px;
+  }
+  .next-step-text { font-size: 13px; color: #66aaff; }
+  .btn-next-step {
+    font-family: 'Syne', sans-serif; font-size: 13px; font-weight: 700;
+    padding: 8px 18px; border-radius: 6px; cursor: pointer;
+    background: rgba(0,102,255,0.15); color: #66aaff;
+    border: 1px solid rgba(0,102,255,0.4); transition: all .2s;
+  }
+  .btn-next-step:hover { background: rgba(0,102,255,0.25); }
+
+  /* divider */
+  .result-divider { height: 1px; background: var(--border); margin: 20px 0; }
+  .result-sub-title { font-size: 12px; font-weight: 700; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 14px; }
+
+  /* history */
+  .hist-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .hist-table th {
+    text-align: left; padding: 12px 14px; color: var(--muted);
+    font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px;
+    border-bottom: 1px solid var(--border);
+  }
+  .hist-table td {
+    padding: 13px 14px; border-bottom: 1px solid rgba(30,45,61,0.5);
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .hist-table tr:last-child td { border-bottom: none; }
+  .hist-table tr:hover td { background: rgba(0,212,170,0.03); }
+  .badge-sm { padding: 3px 10px; border-radius: 4px; font-size: 11px; font-weight: 700; text-transform: uppercase; }
+  .badge-sm.accept { background: rgba(0,212,170,0.15); color: var(--green); }
+  .badge-sm.reject { background: rgba(255,68,68,0.15);  color: var(--red); }
+  .badge-sm.review { background: rgba(255,183,0,0.15);  color: var(--yellow); }
+
+  .section-title { font-size: 22px; font-weight: 800; margin-bottom: 6px; }
+  .section-sub   { font-size: 14px; color: var(--muted); margin-bottom: 28px; }
+
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid rgba(0,0,0,0.3); border-top-color: var(--bg);
+    border-radius: 50%; animation: spin .7s linear infinite;
+    display: inline-block; margin-right: 8px; vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .resend-row { text-align: center; margin-top: 14px; font-size: 13px; color: var(--muted); }
+  .resend-row a { color: var(--accent); cursor: pointer; }
+
+  @media(max-width: 600px) {
+    nav { padding: 14px 20px; }
+    .auth-card { padding: 32px 22px; }
+    .metrics-grid, .feedback-grid, .alt-grid { grid-template-columns: 1fr 1fr; }
+    .loan-grid, .profile-grid { grid-column: 1fr; }
+    .app-inner { padding: 24px 16px 0; }
+    .otp-row input { width: 38px; height: 48px; font-size: 17px; }
+  }
+</style>
+</head>
+<body>
+
+<nav>
+  <div class="logo">Loan<span>IQ</span></div>
+  <div class="nav-actions" id="nav-auth-actions" style="display:none">
+    <div class="nav-cid" id="nav-cid-display"></div>
+    <button class="btn-logout" onclick="logout()">Logout</button>
+  </div>
+</nav>
+
+<!-- AUTH PAGE -->
+<div id="page-auth" class="page active">
+  <div class="auth-card">
+
+    <div id="step-tabs">
+      <div class="tabs">
+        <button class="tab active" onclick="switchAuthTab('login')">Login</button>
+        <button class="tab" onclick="switchAuthTab('register')">Register</button>
+      </div>
+
+      <div id="login-form">
+        <div class="card-title">Welcome back</div>
+        <div class="card-sub">Enter your Customer ID and password</div>
+        <div id="login-msg" class="msg"></div>
+        <div class="form-group">
+          <label>Customer ID</label>
+          <input type="number" id="login-cid" placeholder="e.g. 4820391">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="login-pass" placeholder="••••••••">
+        </div>
+        <button class="btn btn-primary" onclick="doLogin()" id="btn-login">Login</button>
+      </div>
+
+      <div id="register-form" style="display:none">
+        <div class="card-title">Create account</div>
+        <div class="card-sub">Get your unique Customer ID after verification</div>
+        <div id="register-msg" class="msg"></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px">
+          <div class="form-group">
+            <label>First Name</label>
+            <input type="text" id="reg-fname" placeholder="Arjun">
+          </div>
+          <div class="form-group">
+            <label>Last Name</label>
+            <input type="text" id="reg-lname" placeholder="Kumar">
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="reg-email" placeholder="arjun@gmail.com">
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="reg-pass" placeholder="••••••••">
+        </div>
+        <button class="btn btn-primary" onclick="doRegister()" id="btn-register">Send OTP</button>
+      </div>
+    </div>
+
+    <div id="step-otp" style="display:none">
+      <div class="card-title">Verify email</div>
+      <div class="card-sub" id="otp-sub">Enter the 6-digit OTP sent to your email</div>
+      <div id="otp-msg" class="msg"></div>
+      <div class="form-group">
+        <label>OTP</label>
+        <div class="otp-row">
+          <input type="text" maxlength="1" class="otp-digit" oninput="otpFwd(this)" onkeydown="otpBack(event,this)">
+          <input type="text" maxlength="1" class="otp-digit" oninput="otpFwd(this)" onkeydown="otpBack(event,this)">
+          <input type="text" maxlength="1" class="otp-digit" oninput="otpFwd(this)" onkeydown="otpBack(event,this)">
+          <input type="text" maxlength="1" class="otp-digit" oninput="otpFwd(this)" onkeydown="otpBack(event,this)">
+          <input type="text" maxlength="1" class="otp-digit" oninput="otpFwd(this)" onkeydown="otpBack(event,this)">
+          <input type="text" maxlength="1" class="otp-digit" oninput="otpFwd(this)" onkeydown="otpBack(event,this)">
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="doVerifyOTP()" id="btn-verify-otp">Verify OTP</button>
+      <div class="resend-row">Didn't receive it? <a onclick="doResendOTP()">Resend OTP</a></div>
+    </div>
+
+  </div>
+</div>
+
+<!-- APP PAGE -->
+<div id="page-app" class="page">
+  <div class="app-inner">
+
+    <div class="app-nav">
+      <button class="app-tab active" onclick="switchSection('profile')">Profile</button>
+      <button class="app-tab" onclick="switchSection('loan')">Loan Check</button>
+      <button class="app-tab" onclick="switchSection('history')">History</button>
+    </div>
+
+    <!-- PROFILE -->
+    <div id="section-profile" class="section active">
+      <div class="section-title">Financial Profile</div>
+      <div class="section-sub">Your profile is used to auto-derive all loan risk inputs</div>
+      <div id="profile-msg" class="msg"></div>
+
+      <div class="profile-grid">
+        <div class="form-group full">
+          <label>Employment Type</label>
+          <select id="p-employment" onchange="toggleStudentFields()">
+            <option value="">Select employment type</option>
+            <option value="govt_employer">Government Employee</option>
+            <option value="it_employer">IT Employer</option>
+            <option value="non_it_employer">Non-IT Employer</option>
+            <option value="business">Business / Self-Employed</option>
+            <option value="student">Student</option>
+          </select>
+        </div>
+        <div id="non-student-fields" style="display:contents">
+          <div class="form-group">
+            <label>Monthly Income (₹)</label>
+            <input type="number" id="p-income" placeholder="e.g. 75000">
+          </div>
+          <div class="form-group">
+            <label>Monthly Expenses (₹)</label>
+            <input type="number" id="p-expenses" placeholder="e.g. 30000">
+          </div>
+          <div class="form-group">
+            <label>Existing EMIs (₹/month)</label>
+            <input type="number" id="p-emis" placeholder="e.g. 8000">
+          </div>
+          <div class="form-group">
+            <label>Years of Experience</label>
+            <input type="number" id="p-yoe" placeholder="e.g. 4" min="0" max="50">
+          </div>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:12px;margin-top:8px">
+        <button class="btn btn-primary" style="width:auto;padding:13px 30px" onclick="saveProfile()">Save Profile</button>
+        <button class="btn btn-secondary" style="width:auto;padding:13px 22px" onclick="loadProfile()">Load Saved</button>
+      </div>
+    </div>
+
+    <!-- LOAN -->
+    <div id="section-loan" class="section">
+      <div class="section-title">Loan Assessment</div>
+      <div class="section-sub">Get instant credit risk analysis powered by LightGBM</div>
+      <div id="loan-msg" class="msg"></div>
+
+      <div class="loan-grid">
+        <div class="form-group">
+          <label>Loan Amount (₹)</label>
+          <input type="number" id="l-amount" placeholder="e.g. 500000" min="10000" max="10000000">
+        </div>
+        <div class="form-group">
+          <label>Term</label>
+          <select id="l-term">
+            <option value="36 months">36 months</option>
+            <option value="60 months">60 months</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Loan Purpose</label>
+          <select id="l-purpose">
+            <option value="debt_consolidation">Debt Consolidation</option>
+            <option value="home_improvement">Home Improvement</option>
+            <option value="credit_card">Credit Card</option>
+            <option value="major_purchase">Major Purchase</option>
+            <option value="medical">Medical</option>
+            <option value="car">Car</option>
+            <option value="small_business">Small Business</option>
+            <option value="educational">Educational</option>
+            <option value="house">House</option>
+            <option value="wedding">Wedding</option>
+            <option value="vacation">Vacation</option>
+            <option value="moving">Moving</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Bank</label>
+          <select id="l-bank">
+            <option value="sbi">State Bank of India</option>
+            <option value="hdfc">HDFC Bank</option>
+            <option value="icici">ICICI Bank</option>
+            <option value="axis">Axis Bank</option>
+            <option value="kotak">Kotak Mahindra</option>
+            <option value="idfc">IDFC First</option>
+            <option value="federal">Federal Bank</option>
+            <option value="indian_bank">Indian Bank</option>
+            <option value="bank_of_baroda">Bank of Baroda</option>
+            <option value="indusind">IndusInd Bank</option>
+            <option value="union_bank">Union Bank</option>
+            <option value="canara">Canara Bank</option>
+            <option value="pnb">Punjab National Bank</option>
+            <option value="rbl">RBL Bank</option>
+            <option value="yes_bank">Yes Bank</option>
+            <option value="boi">Bank of India</option>
+            <option value="others">Others</option>
+          </select>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" style="max-width:220px" onclick="doLoanCheck()" id="btn-loan">
+        Run Assessment
+      </button>
+
+      <!-- RESULT -->
+      <div id="loan-result" class="result-card" style="display:none">
+
+        <!-- decision + confidence -->
+        <div style="display:flex;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:24px">
+          <div id="decision-badge" class="decision-badge"></div>
+          <span id="confidence-pill" class="confidence-pill"></span>
+          <span id="summary-message" style="font-size:14px;color:var(--muted);margin-left:4px"></span>
+        </div>
+
+        <!-- financials row -->
+        <div class="result-sub-title">Loan Financials</div>
+        <div class="metrics-grid" id="metrics-financials"></div>
+
+        <!-- profile snapshot row -->
+        <div class="result-divider"></div>
+        <div class="result-sub-title">Your Profile Snapshot</div>
+        <div class="metrics-grid" id="metrics-profile"></div>
+
+        <!-- insights + suggestions -->
+        <div class="result-divider"></div>
+        <div class="feedback-grid" id="feedback-grid"></div>
+
+        <!-- alternatives -->
+        <div class="result-divider"></div>
+        <div class="result-sub-title">Compare alternatives</div>
+        <div class="alt-grid" id="alt-grid"></div>
+
+        <!-- next step -->
+        <div id="next-step-bar" class="next-step-bar" style="display:none">
+          <span class="next-step-text" id="next-step-text"></span>
+          <button class="btn-next-step" id="next-step-btn">Find Branches</button>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- HISTORY -->
+    <div id="section-history" class="section">
+      <div class="section-title">Loan History</div>
+      <div class="section-sub">Your last 50 loan assessments</div>
+      <div id="history-msg" class="msg"></div>
+      <div style="overflow-x:auto">
+        <table class="hist-table">
+          <thead>
+            <tr>
+              <th>Bank</th><th>Amount</th><th>Decision</th>
+              <th>EMI</th><th>Rate %</th><th>DTI %</th><th>Date</th>
+            </tr>
+          </thead>
+          <tbody id="history-body"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script>
+const API = "http://43.204.35.90:8000";
+
+let _access  = localStorage.getItem("loaniq_access")  || "";
+let _refresh = localStorage.getItem("loaniq_refresh") || "";
+let _cid     = localStorage.getItem("loaniq_cid")     || "";
+let _pendingEmail   = "";
+let _pendingPurpose = "signup";
+let _pendingCID     = "";
+
+if (_access) showApp();
+
+function setTokens(access, refresh, cid) {
+  _access = access; _refresh = refresh; _cid = cid;
+  localStorage.setItem("loaniq_access", access);
+  localStorage.setItem("loaniq_refresh", refresh);
+  localStorage.setItem("loaniq_cid", cid);
+}
+function clearTokens() {
+  _access = _refresh = _cid = "";
+  ["loaniq_access","loaniq_refresh","loaniq_cid"].forEach(k => localStorage.removeItem(k));
+}
+
+async function authFetch(url, opts = {}) {
+  opts.headers = { ...(opts.headers || {}), "Authorization": `Bearer ${_access}`, "Content-Type": "application/json" };
+  let res = await fetch(API + url, opts);
+  if (res.status === 401 && _refresh) {
+    const r = await fetch(API + "/auth/refresh", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: _refresh })
+    });
+    if (r.ok) {
+      const d = await r.json();
+      setTokens(d.access, d.refresh, _cid);
+      opts.headers["Authorization"] = `Bearer ${_access}`;
+      res = await fetch(API + url, opts);
+    } else { logout(); return null; }
+  }
+  return res;
+}
+
+function showApp() {
+  document.getElementById("page-auth").classList.remove("active");
+  document.getElementById("page-app").classList.add("active");
+  document.getElementById("nav-auth-actions").style.display = "flex";
+  document.getElementById("nav-cid-display").textContent = `CID: ${_cid}`;
+  loadProfile();
+}
+function showAuth() {
+  document.getElementById("page-app").classList.remove("active");
+  document.getElementById("page-auth").classList.add("active");
+  document.getElementById("nav-auth-actions").style.display = "none";
+}
+function logout() { clearTokens(); showAuth(); }
+
+function switchAuthTab(tab) {
+  document.querySelectorAll('.tabs .tab').forEach((t, i) =>
+    t.classList.toggle('active', (i === 0 && tab === 'login') || (i === 1 && tab === 'register'))
+  );
+  document.getElementById('login-form').style.display    = tab === 'login'    ? '' : 'none';
+  document.getElementById('register-form').style.display = tab === 'register' ? '' : 'none';
+}
+
+async function doLogin() {
+  const cid  = document.getElementById("login-cid").value.trim();
+  const pass = document.getElementById("login-pass").value;
+  const msg  = document.getElementById("login-msg");
+  msg.className = 'msg';
+  if (!cid || !pass) { showMsg(msg, 'error', 'Fill in all fields'); return; }
+  const btn = document.getElementById("btn-login");
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Logging in…';
+  try {
+    const res = await fetch(API + "/auth/login", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ customer_id: parseInt(cid), password: pass })
+    });
+    const d = await res.json();
+    if (!res.ok) { showMsg(msg, 'error', d.detail || 'Invalid credentials'); return; }
+    setTokens(d.access, d.refresh, cid);
+    showApp();
+  } catch (e) { showMsg(msg, 'error', 'Network error'); }
+  finally { btn.disabled = false; btn.textContent = 'Login'; }
+}
+
+async function doRegister() {
+  const fname = document.getElementById("reg-fname").value.trim();
+  const lname = document.getElementById("reg-lname").value.trim();
+  const email = document.getElementById("reg-email").value.trim();
+  const pass  = document.getElementById("reg-pass").value;
+  const msg   = document.getElementById("register-msg");
+  msg.className = 'msg';
+  if (!fname || !lname || !email || !pass) { showMsg(msg, 'error', 'Fill in all fields'); return; }
+  const btn = document.getElementById("btn-register");
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Sending OTP…';
+  try {
+    const res = await fetch(API + "/auth/register", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ first_name: fname, last_name: lname, email, password: pass })
+    });
+    const d = await res.json();
+    if (!res.ok) { showMsg(msg, 'error', d.detail || 'Registration failed'); return; }
+    _pendingEmail = email; _pendingPurpose = "signup"; _pendingCID = d.customer_id || "";
+    showOTPStep(`OTP sent to ${email}`);
+  } catch (e) { showMsg(msg, 'error', 'Network error'); }
+  finally { btn.disabled = false; btn.textContent = 'Send OTP'; }
+}
+
+function showOTPStep(subText) {
+  document.getElementById("step-tabs").style.display = "none";
+  document.getElementById("step-otp").style.display  = "";
+  document.getElementById("otp-sub").textContent = subText;
+  document.querySelectorAll('.otp-digit').forEach(i => i.value = '');
+  document.querySelector('.otp-digit').focus();
+}
+function otpFwd(el) {
+  el.value = el.value.replace(/\D/, '');
+  if (el.value && el.nextElementSibling?.classList.contains('otp-digit')) el.nextElementSibling.focus();
+}
+function otpBack(e, el) {
+  if (e.key === 'Backspace' && !el.value && el.previousElementSibling?.classList.contains('otp-digit'))
+    el.previousElementSibling.focus();
+}
+
+async function doVerifyOTP() {
+  const otp = [...document.querySelectorAll('.otp-digit')].map(i => i.value).join('');
+  const msg = document.getElementById("otp-msg");
+  msg.className = 'msg';
+  if (otp.length < 6) { showMsg(msg, 'error', 'Enter all 6 digits'); return; }
+  const btn = document.getElementById("btn-verify-otp");
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Verifying…';
+  try {
+    const res = await fetch(API + "/auth/verify", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: _pendingEmail, otp, purpose: "verify" })
+    });
+    const d = await res.json();
+    if (!res.ok) { showMsg(msg, 'error', d.detail || 'Invalid OTP'); return; }
+    const cidMsg = _pendingCID ? ` Your Customer ID is: ${_pendingCID}` : '';
+    showMsg(msg, 'success', `Email verified!${cidMsg} — Please save your Customer ID to login.`);
+    setTimeout(() => {
+      document.getElementById("step-otp").style.display  = "none";
+      document.getElementById("step-tabs").style.display = "";
+      if (_pendingCID) document.getElementById("login-cid").value = _pendingCID;
+      switchAuthTab('login');
+    }, 3000);
+  } catch (e) { showMsg(msg, 'error', 'Network error'); }
+  finally { btn.disabled = false; btn.textContent = 'Verify OTP'; }
+}
+
+async function doResendOTP() {
+  const msg = document.getElementById("otp-msg");
+  try {
+    const res = await fetch(API + "/auth/send-otp", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email: _pendingEmail, purpose: _pendingPurpose })
+    });
+    if (res.ok) showMsg(msg, 'info', 'New OTP sent!');
+    else showMsg(msg, 'error', 'Could not resend OTP');
+  } catch (e) { showMsg(msg, 'error', 'Network error'); }
+}
+
+function switchSection(name) {
+  document.querySelectorAll('.app-tab').forEach(t => {
+    t.classList.toggle('active', t.textContent.toLowerCase().includes(name.split('-')[0]));
+  });
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.getElementById(`section-${name}`).classList.add('active');
+  if (name === 'history') loadHistory();
+}
+
+function toggleStudentFields() {
+  const emp  = document.getElementById("p-employment").value;
+  const show = emp !== 'student';
+  document.querySelectorAll('#non-student-fields .form-group').forEach(el => {
+    el.style.display = show ? '' : 'none';
+  });
+}
+
+async function saveProfile() {
+  const emp    = document.getElementById("p-employment").value;
+  const income = parseFloat(document.getElementById("p-income").value) || 0;
+  const exp_   = parseFloat(document.getElementById("p-expenses").value) || 0;
+  const emis   = parseFloat(document.getElementById("p-emis").value) || 0;
+  const yoe    = parseInt(document.getElementById("p-yoe").value) || 0;
+  const msg    = document.getElementById("profile-msg");
+  msg.className = 'msg';
+  if (!emp) { showMsg(msg, 'error', 'Select employment type'); return; }
+  const body = { employment_type: emp };
+  if (emp !== 'student') {
+    if (!income) { showMsg(msg, 'error', 'Monthly income is required'); return; }
+    body.monthly_income      = income;
+    body.monthly_expenses    = exp_;
+    body.existing_emis       = emis;
+    body.years_of_experience = yoe;
+  }
+  let res = await authFetch("/profile/", { method: "PUT", body: JSON.stringify(body) });
+  if (res?.status === 404) res = await authFetch("/profile/", { method: "POST", body: JSON.stringify(body) });
+  if (!res) return;
+  const d = await res.json();
+  if (!res.ok) showMsg(msg, 'error', d.detail || 'Failed to save');
+  else showMsg(msg, 'success', 'Profile saved successfully');
+}
+
+async function loadProfile() {
+  const res = await authFetch("/profile/");
+  if (!res || !res.ok) return;
+  const d = await res.json();
+  document.getElementById("p-employment").value = d.employment_type || '';
+  document.getElementById("p-income").value     = d.monthly_income  || '';
+  document.getElementById("p-expenses").value   = d.monthly_expenses || '';
+  document.getElementById("p-emis").value       = d.existing_emis   || '';
+  document.getElementById("p-yoe").value        = d.years_of_experience || '';
+  toggleStudentFields();
+}
+
+// ── LOAN CHECK ──
+async function doLoanCheck() {
+  const amount  = parseFloat(document.getElementById("l-amount").value);
+  const term    = document.getElementById("l-term").value;
+  const purpose = document.getElementById("l-purpose").value;
+  const bank    = document.getElementById("l-bank").value;
+  const msg     = document.getElementById("loan-msg");
+  msg.className = 'msg';
+  if (!amount || amount < 10000) { showMsg(msg, 'error', 'Enter a valid loan amount (min ₹10,000)'); return; }
+
+  const btn = document.getElementById("btn-loan");
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span>Analysing…';
+  document.getElementById("loan-result").style.display = "none";
+
+  try {
+    const res = await authFetch("/loan/", {
+      method: "POST",
+      body: JSON.stringify({ loan_amnt: amount, term, purpose, bank_name: bank })
+    });
+    if (!res) return;
+    const d = await res.json();
+    if (!res.ok) { showMsg(msg, 'error', d.detail || 'Assessment failed'); return; }
+    renderResult(d);
+  } catch (e) { showMsg(msg, 'error', 'Network error'); }
+  finally { btn.disabled = false; btn.textContent = 'Run Assessment'; }
+}
+
+// ── RENDER — matches fixed loan.py response exactly ──
+function renderResult(d) {
+  const resultDiv = document.getElementById("loan-result");
+
+  // 1. Decision badge
+  const badge = document.getElementById("decision-badge");
+  badge.className = `decision-badge ${d.status}`;
+  badge.textContent = d.status.toUpperCase();
+
+  // 2. Summary
+  document.getElementById("summary-message").textContent = d.summary.message;
+  const conf = document.getElementById("confidence-pill");
+  conf.className = `confidence-pill ${d.summary.confidence}`;
+  conf.textContent = d.summary.confidence + " confidence";
+
+  // 3. Financials (3 metric tiles)
+  const f = d.financials;
+  document.getElementById("metrics-financials").innerHTML = `
+    <div class="metric">
+      <div class="metric-label">Loan Amount</div>
+      <div class="metric-value">₹${Number(f.loan_amount).toLocaleString('en-IN')}</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Interest Rate</div>
+      <div class="metric-value accent">${f.interest_rate}%</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Monthly EMI</div>
+      <div class="metric-value accent">₹${Math.round(f.emi).toLocaleString('en-IN')}</div>
+    </div>
+  `;
+
+  // 4. Profile snapshot — safely read d.profile (backend now always sends it)
+  const p = d.profile || {};
+  document.getElementById("metrics-profile").innerHTML = `
+    <div class="metric">
+      <div class="metric-label">Employment</div>
+      <div class="metric-value" style="font-size:14px">${(p.employment_type || '—').replace(/_/g,' ')}</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Monthly Income</div>
+      <div class="metric-value">₹${Number(p.monthly_income || 0).toLocaleString('en-IN')}</div>
+    </div>
+    <div class="metric">
+      <div class="metric-label">Existing EMIs</div>
+      <div class="metric-value ${(p.existing_emis || 0) > 0 ? 'warn' : ''}">
+        ₹${Number(p.existing_emis || 0).toLocaleString('en-IN')}
+      </div>
+    </div>
+  `;
+
+  // 5. Insights + suggestions
+  const insights    = d.insights    || [];
+  const suggestions = d.suggestions || [];
+  document.getElementById("feedback-grid").innerHTML = `
+    <div class="feedback-box">
+      <div class="feedback-title">Why this decision</div>
+      ${insights.length
+        ? insights.map(i => `
+            <div class="feedback-item">
+              <span class="feedback-dot dot-info"></span>${i}
+            </div>`).join("")
+        : '<div class="feedback-item" style="color:var(--muted)">No additional insights.</div>'}
+    </div>
+    <div class="feedback-box">
+      <div class="feedback-title">How to improve</div>
+      ${suggestions.length
+        ? suggestions.map(s => `
+            <div class="feedback-item">
+              <span class="feedback-dot dot-suggest"></span>${s}
+            </div>`).join("")
+        : '<div class="feedback-item" style="color:var(--muted)">No changes needed.</div>'}
+    </div>
+  `;
+
+  // 6. Alternatives
+  const alts = d.alternatives || [];
+  document.getElementById("alt-grid").innerHTML = alts.length
+    ? alts.map(a => `
+        <div class="alt-card">
+          <div class="alt-bank">${String(a.bank).toUpperCase()}</div>
+          <div class="alt-row">
+            <span>Interest</span>
+            <span class="alt-value">${a.interest_rate}%</span>
+          </div>
+          <div class="alt-row">
+            <span>EMI / mo</span>
+            <span class="alt-value">₹${Math.round(a.emi).toLocaleString('en-IN')}</span>
+          </div>
+        </div>`).join("")
+    : `<div class="alt-card">
+         <div class="alt-bank">No Alternatives</div>
+         <div class="alt-row"><span>Status</span><span class="alt-value">N/A</span></div>
+       </div>`;
+
+  // 7. Next step
+  if (d.next_step) {
+    const bar = document.getElementById("next-step-bar");
+    bar.style.display = "flex";
+    document.getElementById("next-step-text").textContent = d.next_step.action;
+    document.getElementById("next-step-btn").onclick = () => {
+      const q = encodeURIComponent(d.next_step.map_query);
+      window.open(`https://www.google.com/maps/search/?api=1&query=${q}`);
+    };
+  }
+
+  resultDiv.style.display = "block";
+  resultDiv.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+// ── HISTORY ──
+async function loadHistory() {
+  const tbody = document.getElementById("history-body");
+  const msg   = document.getElementById("history-msg");
+  msg.className = 'msg';
+  tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">Loading…</td></tr>`;
+
+  const res = await authFetch("/loan/history");
+  if (!res || !res.ok) { showMsg(msg, 'error', 'Could not load history'); tbody.innerHTML = ''; return; }
+  const d = await res.json();
+
+  if (!d.data?.length) {
+    tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:24px">No assessments yet</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = d.data.map(r => `
+    <tr>
+      <td>${r.bank || '—'}</td>
+      <td>₹${Number(r.loan_amnt || 0).toLocaleString('en-IN')}</td>
+      <td><span class="badge-sm ${r.decision}">${r.decision}</span></td>
+      <td>₹${Math.round(r.emi || 0).toLocaleString('en-IN')}</td>
+      <td>${r.interest_rate != null ? r.interest_rate : '—'}%</td>
+      <td>${r.dti != null ? Number(r.dti).toFixed(1) : '—'}%</td>
+      <td style="color:var(--muted);font-size:11px">${r.created_at ? new Date(r.created_at).toLocaleDateString('en-IN') : '—'}</td>
+    </tr>
+  `).join('');
+}
+
+function showMsg(el, type, text) {
+  el.className = `msg ${type}`;
+  el.textContent = text;
+}
+
+document.getElementById("login-pass").addEventListener("keydown", e => { if (e.key === 'Enter') doLogin(); });
+</script>
+</body>
+</html>
