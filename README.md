@@ -122,42 +122,42 @@ Frontend: http://localhost:8000/
 API Docs: http://localhost:8000/docs
 ## 🔗 API Endpoints
 ###Auth
-POST /auth/register → Register user + send OTP
-POST /auth/verify → Verify OTP
-POST /auth/login → Login user
-POST /auth/refresh → Refresh token
+-POST /auth/register → Register user + send OTP
+-POST /auth/verify → Verify OTP
+-POST /auth/login → Login user
+-POST /auth/refresh → Refresh token
 ###Profile
-POST /profile/ → Create profile
-GET /profile/ → Get profile
+-POST /profile/ → Create profile
+-GET /profile/ → Get profile
 ###Loan
-POST /loan/ → Risk prediction
-GET /loan/history → Loan history
+-POST /loan/ → Risk prediction
+-GET /loan/history → Loan history
 ##📊 ML Model Output
 
 ###The system returns:
 
-Loan Decision: Accept / Review / Reject
-Interest Rate (%)
-EMI Calculation
-Debt-to-Income Ratio (DTI)
-Risk Probability Score
-Alternative Bank Suggestions
+-Loan Decision: Accept / Review / Reject
+-Interest Rate (%)
+-EMI Calculation
+-Debt-to-Income Ratio (DTI)
+-Risk Probability Score
+-Alternative Bank Suggestions
 ## 🚀 Deployment
 
 ###Deployed on AWS EC2 using Docker:
 
-Ubuntu 24.04 LTS
-Docker + Docker Compose
-Nginx-ready structure (optional upgrade)
+-Ubuntu 24.04 LTS
+-Docker + Docker Compose
+-Nginx-ready structure (optional upgrade)
 ## 🧠 Key Highlights
-End-to-end credit risk system
-Real-world banking logic simulation
-Production-style authentication system
-ML + backend integration (not just notebook project)
-Scalable microservice-ready architecture
+-End-to-end credit risk system
+-Real-world banking logic simulation
+-Production-style authentication system
+-ML + backend integration (not just notebook project)
+-Scalable microservice-ready architecture
 ##  📌 Future Improvements
-React frontend upgrade
-Redis caching for OTP
-Microservices split (Auth / ML / Loan engine)
-CI/CD pipeline (GitHub Actions)
-HTTPS with Nginx + domain
+-React frontend upgrade
+-Redis caching for OTP
+-Microservices split (Auth / ML / Loan engine)
+-CI/CD pipeline (GitHub Actions)
+-HTTPS with Nginx + domain
